@@ -1,5 +1,5 @@
 from torchvision.models import ResNet50_Weights
-from base_extractor import BaseExtractor
+from src.feature_extraction.base_extractor import BaseExtractor
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
