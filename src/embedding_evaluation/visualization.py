@@ -36,7 +36,7 @@ def visualize_embedding(X, y, method='tsne', title='Feature Visualization', dim=
     X_embedded = reducer.fit_transform(X)
 
     # prepare output directory
-    out_dir = Path('reports/figures')
+    out_dir = Path('report/figures')
     out_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     base_name = _safe_filename(f"{title}_{method}_{dim}_{timestamp}")
