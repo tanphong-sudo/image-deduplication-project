@@ -1,0 +1,86 @@
+# ============================================================================
+# Image Deduplication Project - Requirements
+# Đề tài: Rút gọn tập ảnh lớn bằng phát hiện ảnh trùng nội dung
+# ============================================================================
+
+# Core Dependencies
+# ----------------------------------------------------------------------------
+numpy>=1.19.0
+torch>=1.10.0
+torchvision>=0.11.0
+Pillow>=8.0.0
+
+# Deep Learning Models (Feature Extraction)
+# ----------------------------------------------------------------------------
+timm>=0.6.0                    # PyTorch Image Models (EfficientNet, ConvNeXt, ViT)
+
+# Similarity Search & LSH
+# ----------------------------------------------------------------------------
+faiss-cpu>=1.7.0              # Facebook AI Similarity Search (CPU version)
+# faiss-gpu>=1.7.0            # Uncomment nếu có GPU
+pybind11>=2.6.0               # C++ bindings cho Python (cho LSH module)
+datasketch>=1.5.0             # MinHash implementation
+
+# Image Processing
+# ----------------------------------------------------------------------------
+opencv-python>=4.5.0          # Computer vision library
+scikit-image>=0.18.0          # Image processing algorithms
+
+# Visualization & Analysis
+# ----------------------------------------------------------------------------
+matplotlib>=3.3.0             # Plotting library
+seaborn>=0.11.0               # Statistical visualization
+plotly>=5.0.0                 # Interactive plots
+
+# Evaluation & Metrics
+# ----------------------------------------------------------------------------
+scikit-learn>=0.24.0          # Machine learning metrics
+scipy>=1.5.0                  # Scientific computing
+
+# Utilities
+# ----------------------------------------------------------------------------
+tqdm>=4.60.0                  # Progress bars
+pandas>=1.2.0                 # Data manipulation
+tabulate>=0.8.0               # Pretty-print tables
+
+# Testing
+# ----------------------------------------------------------------------------
+pytest>=6.0.0                 # Testing framework
+pytest-cov>=2.12.0            # Coverage plugin
+
+# Documentation (Optional)
+# ----------------------------------------------------------------------------
+# jupyter>=1.0.0              # Jupyter notebooks
+# notebook>=6.4.0             # Jupyter notebook server
+
+# ============================================================================
+# Installation Instructions
+# ============================================================================
+#
+# 1. Cài đặt dependencies cơ bản:
+#    pip install -r requirements.txt
+#
+# 2. Compile C++ LSH module:
+#    cd src/lsh_cpp_module
+#    python setup.py build_ext --inplace
+#
+# 3. Kiểm tra installation:
+#    python -c "import torch; import faiss; import lsh_cpp_module; print('OK')"
+#
+# ============================================================================
+# Platform-Specific Notes
+# ============================================================================
+#
+# macOS:
+#   - Install Xcode Command Line Tools: xcode-select --install
+#   - For OpenMP support: brew install libomp
+#
+# Linux:
+#   - Install build tools: sudo apt-get install build-essential
+#   - For CUDA support: install CUDA toolkit và dùng faiss-gpu
+#
+# Windows:
+#   - Install Visual Studio Build Tools
+#   - Some packages may need pre-built wheels
+#
+# ============================================================================
