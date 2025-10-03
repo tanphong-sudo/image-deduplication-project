@@ -36,10 +36,10 @@ This project builds a system to **detect and remove duplicate or near-duplicate 
                         ▼
 ┌─────────────────────────────────────────────────────────────┐
 │             Similarity Search & Hashing                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
-│  │ SimHash  │ │ MinHash  │ │  FAISS   │ │ Bloom Filter │  │
-│  │  (C++)   │ │          │ │          │ │              │  │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────────┘  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐    │
+│  │ SimHash  │ │ MinHash  │ │  FAISS   │ │ Bloom Filter │    │
+│  │  (C++)   │ │          │ │          │ │              │    │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────────┘    │
 └───────────────────────┬─────────────────────────────────────┘
                         │
                         ▼
@@ -56,7 +56,7 @@ This project builds a system to **detect and remove duplicate or near-duplicate 
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────────┐
-│     OUTPUT: Deduplicated Dataset + Statistics + Report     │
+│     OUTPUT: Deduplicated Dataset + Statistics + Report      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
