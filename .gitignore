@@ -39,7 +39,7 @@ env/
 # -----------------------------
 data/
 outputs/
-input_images/
+figures/
 *.npz
 *.npy
 
