@@ -302,21 +302,29 @@ def main():
         try:
             from src.similarity_search.simhash_search import SimHashSearch
             logging.info("Using SimHashSearch (C++ backend via Pybind11)")
+
             dim = features.shape[1]
             searcher = SimHashSearch(dim=dim, num_bits=args.simhash_bits, num_tables=4)
             searcher.add_batch(features, np.arange(len(features)))
 
             logging.info("Running SimHash search...")
-            N = len(features)
-            k = args.k
-            I = np.full((N, k), -1, dtype=int)
-            D = np.full((N, k), np.inf, dtype=float)
+            def _simhash_search():
+                N = len(features)
+                k = args.k
+                I = np.full((N, k), -1, dtype=int)
+                D = np.full((N, k), np.inf, dtype=float)
 
-            for i, vec in enumerate(features):
-                neighbors = searcher.query(vec, k=k)
-                for j, (nid, dist) in enumerate(neighbors):
-                    I[i, j] = nid
-                    D[i, j] = dist
+                for i, vec in enumerate(features):
+                    neighbors = searcher.query(vec, k=k)
+                    for j, (nid, dist) in enumerate(neighbors):
+                        I[i, j] = nid
+                        D[i, j] = dist
+                return D, I
+
+            (res, elapsed, mem_mb) = run_with_time_and_peak_rss(_simhash_search)
+            D, I = res
+            timings["simhash_search"] = elapsed
+            memory_usage["simhash_search"] = mem_mb
 
             clusters_idx = cluster_from_knn(I, D, threshold=args.hamming_threshold)
             clusters = [[ids[i] for i in cl] for cl in clusters_idx]
@@ -331,10 +339,16 @@ def main():
     elif args.method == "minhash":
         try:
             mm = importlib.import_module("src.similarity_search.minhash_search")
-            # expected interface similar to simhash wrapper
-            if args.build_index:
-                mm.build_index(features, ids, str(Path(out_dir) / "minhash_index.bin"))
-            D, I = mm.search_index(str(Path(out_dir) / "minhash_index.bin"), features, k=args.k)
+            def _minhash_search():
+                if args.build_index:
+                    mm.build_index(features, ids, str(Path(out_dir) / "minhash_index.bin"))
+                return mm.search_index(str(Path(out_dir) / "minhash_index.bin"), features, k=args.k)
+
+            (res, elapsed, mem_mb) = run_with_time_and_peak_rss(_minhash_search)
+            D, I = res
+            timings["minhash_search"] = elapsed
+            memory_usage["minhash_search"] = mem_mb
+
             clusters_idx = cluster_from_knn(I, D, threshold=args.threshold if args.threshold is not None else 0.3)
             clusters = [[ids[i] for i in cl] for cl in clusters_idx]
             reps = choose_representatives(clusters_idx, ids)
