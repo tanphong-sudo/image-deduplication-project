@@ -29,6 +29,7 @@ import imagehash
 from src.similarity_search.faiss_search import build_faiss_index, search_faiss_index
 from src.utils.image_utils import choose_representatives
 from src.utils.io_utils import group_exact_duplicates, list_images_recursive
+from src.utils.ground_truth_utils import extract_labels, generate_ground_truth
 
 
 # Optional heavy deps
@@ -203,7 +204,7 @@ def main():
     parser.add_argument("--save-features", default=None, help="Path to save features (npy)")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--use-gpu", action="store_true")
-    parser.add_argument("--k", type=int, default=5, help="k for kNN search")
+    parser.add_argument("--k", type=int, default=50, help="k for kNN search")
     parser.add_argument("--threshold", type=float, default=None, help="distance threshold for clustering (L2 for FAISS)")
     parser.add_argument("--nlist", type=int, default=1024, help="FAISS nlist (if IVF)")
     parser.add_argument("--index-type", choices=["flat", "ivf", "hnsw"], default="flat")
@@ -223,32 +224,10 @@ def main():
         sys.exit(1)
     logging.info(f"Found {len(image_paths)} images")
 
-    # extract labels from filenames
-    labels = []
-    pattern = re.compile(r'^(obj\d+)_+\d+', re.IGNORECASE)
-
-    for path in image_paths:
-        fname = Path(path).stem
-        match = pattern.match(fname)
-        if match:
-            label = match.group(1) 
-        else:
-            label = "unknown"
-        labels.append(label)
-
-    logging.info(f"Extracted {len(set(labels))} unique labels.")
-
-    df = pd.DataFrame({
-        "path": image_paths,
-        "label": labels
-    })
-
-    csv_path = out_dir / "image_labels.csv"
-    df.to_csv(csv_path, index=False, encoding="utf-8-sig")
-
-    logging.info(f"Saved image paths and labels to {csv_path}")
-
-
+    # extract labels from filenames and generate ground-truth.json
+    csv_path = extract_labels(image_paths, out_dir)
+    gt_path = generate_ground_truth(csv_path, out_dir)
+    
 
     # 2. exact duplicate step
     if args.method == "exact":
