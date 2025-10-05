@@ -12,7 +12,9 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
+import re
 import argparse
+import pandas as pd
 import shutil
 import time
 import hashlib
@@ -220,6 +222,33 @@ def main():
         logging.error("No images found in dataset")
         sys.exit(1)
     logging.info(f"Found {len(image_paths)} images")
+
+    # extract labels from filenames
+    labels = []
+    pattern = re.compile(r'^(obj\d+)_+\d+', re.IGNORECASE)
+
+    for path in image_paths:
+        fname = Path(path).stem
+        match = pattern.match(fname)
+        if match:
+            label = match.group(1) 
+        else:
+            label = "unknown"
+        labels.append(label)
+
+    logging.info(f"Extracted {len(set(labels))} unique labels.")
+
+    df = pd.DataFrame({
+        "path": image_paths,
+        "label": labels
+    })
+
+    csv_path = out_dir / "image_labels.csv"
+    df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+
+    logging.info(f"Saved image paths and labels to {csv_path}")
+
+
 
     # 2. exact duplicate step
     if args.method == "exact":
