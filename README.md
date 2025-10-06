@@ -79,7 +79,7 @@ pip install -r requirements.txt
 
 # Build C++ module
 cd src/lsh_cpp_module
-pip install -e .
+python setup.py build_ext --inplace
 cd ../..
 
 # Run
