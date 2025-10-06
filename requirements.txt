@@ -42,6 +42,12 @@ scipy>=1.5.0                  # Scientific computing
 tqdm>=4.60.0                  # Progress bars
 pandas>=1.2.0                 # Data manipulation
 tabulate>=0.8.0               # Pretty-print tables
+psutil>=5.8.0                 # System and process utilities (memory monitoring)
+ImageHash>=4.2.0              # Perceptual image hashing
+
+# Dimensionality Reduction & Clustering
+# ----------------------------------------------------------------------------
+umap-learn>=0.5.0             # UMAP dimensionality reduction
 
 # Testing
 # ----------------------------------------------------------------------------
