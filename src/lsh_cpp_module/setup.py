@@ -4,12 +4,12 @@ import sys
 import os
 import platform
 
-class get_pybind_include(object):
-    """Helper class để lấy pybind11 include directory."""
-    
-    def __str__(self):
+def get_pybind_include():
+    try:
         import pybind11
         return pybind11.get_include()
+    except ImportError:
+        return None
 
 
 # Định nghĩa C++ extension module
@@ -19,7 +19,7 @@ ext_modules = [
         sources=['lsh_cpp/bindings.cpp'],
         include_dirs=[
             # Thư mục chứa pybind11 headers
-            get_pybind_include(),
+            get_pybind_include() or '',
             # Thư mục hiện tại (để include simhash.cpp)
             'lsh_cpp',
         ],
@@ -42,18 +42,25 @@ def get_compile_args():
         args = [
             '-std=c++14',      # C++14 standard
             '-O3',             # Optimization level 3 (maximum speed)
-            '-march=native',   # Optimize cho CPU hiện tại
             '-ffast-math',     # Fast math operations
             '-Wall',           # Enable warnings
             '-Wextra',         # Extra warnings
         ]
         
-        # Thêm OpenMP nếu có (parallel processing)
         if platform.system() == 'Darwin':  # macOS
-            # macOS 
-            args.append('-Xpreprocessor')
-            args.append('-fopenmp')
+            machine = platform.machine()
+            if machine == 'arm64':
+                # Apple Silicon - use generic optimization
+                args.append('-mcpu=apple-m1')  # works for M1/M2/M3
+            else:
+                # Intel Mac
+                args.append('-march=native')
+            # Skip OpenMP on macOS (requires libomp: brew install libomp)
+            # Uncomment below if you have libomp installed:
+            # args.append('-Xpreprocessor')
+            # args.append('-fopenmp')
         else:  # Linux
+            args.append('-march=native')
             args.append('-fopenmp')
     
     return args
@@ -64,15 +71,17 @@ def get_link_args():
     args = []
     
     if platform.system() == 'Darwin':  # macOS
-        # Link với OpenMP library nếu có
-        args = ['-lomp']
+        # Skip OpenMP linking on macOS (requires: brew install libomp)
+        # Uncomment if you have libomp installed:
+        # args = ['-lomp']
+        pass
     elif platform.system() == 'Linux':
         args = ['-fopenmp']
     
     return args
 
 
-# Apply compile và link args
+# Apply compile and link args
 ext_modules[0].extra_compile_args = get_compile_args()
 ext_modules[0].extra_link_args = get_link_args()
 

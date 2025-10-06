@@ -127,6 +127,18 @@ private:
  * Sử dụng Random Projection (SimHash variant) để băm vectors cao chiều thành các bit strings ngắn.
  */
 class SimHashLSH {
+private:
+    /**
+     * @brief Tính Hamming distance giữa hai hash values 64-bit.
+     * @param h1 Hash value thứ nhất.
+     * @param h2 Hash value thứ hai.
+     * @return Số bits khác nhau giữa h1 và h2.
+     */
+    inline int hamming_distance(uint64_t h1, uint64_t h2) const {
+        uint64_t xor_val = h1 ^ h2;
+        return __builtin_popcountll(xor_val);
+    }
+
 public:
     /**
      * @brief Constructor khởi tạo LSH với các tham số.
@@ -202,11 +214,13 @@ public:
      * @param query_vec Vector query.
      * @param k Số lượng neighbors cần tìm.
      * @param max_candidates Số lượng candidates tối đa để kiểm tra (tránh quét toàn bộ).
+     * @param hamming_threshold Ngưỡng Hamming distance cho multi-probing (0 = exact match only).
      * @return Vector các pairs (id, distance) được sắp xếp theo khoảng cách.
      */
     std::vector<std::pair<int, float>> query(const std::vector<float>& query_vec, 
                                               int k = 10, 
-                                              int max_candidates = 1000) {
+                                              int max_candidates = 1000,
+                                              int hamming_threshold = 0) {
         if (query_vec.size() != dim) {
             throw std::invalid_argument("Query vector dimension mismatch!");
         }
@@ -215,12 +229,19 @@ public:
         std::map<int, bool> candidates_set;
         
         for (int t = 0; t < num_tables && candidates_set.size() < max_candidates; ++t) {
-            uint64_t hash_val = hash_vector(query_vec, t);
+            uint64_t query_hash = hash_vector(query_vec, t);
             
-            // Lấy tất cả IDs trong cùng bucket
-            if (hash_tables[t].count(hash_val)) {
-                for (int id : hash_tables[t][hash_val]) {
-                    candidates_set[id] = true;
+            // Multi-probing: tìm buckets trong vòng Hamming distance threshold
+            for (const auto& bucket_pair : hash_tables[t]) {
+                uint64_t bucket_hash = bucket_pair.first;
+                int ham_dist = hamming_distance(query_hash, bucket_hash);
+                
+                // Nếu Hamming distance <= threshold, lấy candidates từ bucket này
+                if (ham_dist <= hamming_threshold) {
+                    for (int id : bucket_pair.second) {
+                        candidates_set[id] = true;
+                        if (candidates_set.size() >= max_candidates) break;
+                    }
                     if (candidates_set.size() >= max_candidates) break;
                 }
             }
@@ -249,12 +270,15 @@ public:
     /**
      * @brief Tìm tất cả vectors trong vòng threshold distance.
      * @param query_vec Vector query.
-     * @param threshold Ngưỡng khoảng cách.
+     * @param threshold Ngưỡng khoảng cách Euclidean.
+     * @param max_candidates Số lượng candidates tối đa.
+     * @param hamming_threshold Ngưỡng Hamming distance cho multi-probing (0 = exact match only).
      * @return Vector các pairs (id, distance) có khoảng cách <= threshold.
      */
     std::vector<std::pair<int, float>> query_radius(const std::vector<float>& query_vec,
                                                      float threshold,
-                                                     int max_candidates = 2000) {
+                                                     int max_candidates = 2000,
+                                                     int hamming_threshold = 0) {
         if (query_vec.size() != dim) {
             throw std::invalid_argument("Query vector dimension mismatch!");
         }
@@ -262,11 +286,19 @@ public:
         std::map<int, bool> candidates_set;
         
         for (int t = 0; t < num_tables && candidates_set.size() < max_candidates; ++t) {
-            uint64_t hash_val = hash_vector(query_vec, t);
+            uint64_t query_hash = hash_vector(query_vec, t);
             
-            if (hash_tables[t].count(hash_val)) {
-                for (int id : hash_tables[t][hash_val]) {
-                    candidates_set[id] = true;
+            // Multi-probing: tìm buckets trong vòng Hamming distance threshold
+            for (const auto& bucket_pair : hash_tables[t]) {
+                uint64_t bucket_hash = bucket_pair.first;
+                int ham_dist = hamming_distance(query_hash, bucket_hash);
+                
+                // Nếu Hamming distance <= threshold, lấy candidates từ bucket này
+                if (ham_dist <= hamming_threshold) {
+                    for (int id : bucket_pair.second) {
+                        candidates_set[id] = true;
+                        if (candidates_set.size() >= max_candidates) break;
+                    }
                     if (candidates_set.size() >= max_candidates) break;
                 }
             }

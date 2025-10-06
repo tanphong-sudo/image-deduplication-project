@@ -127,7 +127,7 @@ ids : numpy.ndarray
 )doc")
         
         .def("query",
-             [](SimHashLSH &self, py::array_t<float> query_vec, int k, int max_candidates) {
+             [](SimHashLSH &self, py::array_t<float> query_vec, int k, int max_candidates, int hamming_threshold) {
                  auto buf = query_vec.request();
                  if (buf.ndim != 1) {
                      throw std::runtime_error("Query vector must be 1-dimensional");
@@ -135,7 +135,7 @@ ids : numpy.ndarray
                  std::vector<float> vec_cpp(buf.shape[0]);
                  std::memcpy(vec_cpp.data(), buf.ptr, buf.shape[0] * sizeof(float));
                  
-                 auto results = self.query(vec_cpp, k, max_candidates);
+                 auto results = self.query(vec_cpp, k, max_candidates, hamming_threshold);
                  
                  // Convert to Python list of tuples
                  py::list py_results;
@@ -147,6 +147,7 @@ ids : numpy.ndarray
              py::arg("query_vector"), 
              py::arg("k") = 10,
              py::arg("max_candidates") = 1000,
+             py::arg("hamming_threshold") = 0,
              R"doc(
 Find k nearest neighbors for a query vector.
 
@@ -166,7 +167,7 @@ list of tuples
 )doc")
         
         .def("query_radius",
-             [](SimHashLSH &self, py::array_t<float> query_vec, float threshold, int max_candidates) {
+             [](SimHashLSH &self, py::array_t<float> query_vec, float threshold, int max_candidates, int hamming_threshold) {
                  auto buf = query_vec.request();
                  if (buf.ndim != 1) {
                      throw std::runtime_error("Query vector must be 1-dimensional");
@@ -174,7 +175,7 @@ list of tuples
                  std::vector<float> vec_cpp(buf.shape[0]);
                  std::memcpy(vec_cpp.data(), buf.ptr, buf.shape[0] * sizeof(float));
                  
-                 auto results = self.query_radius(vec_cpp, threshold, max_candidates);
+                 auto results = self.query_radius(vec_cpp, threshold, max_candidates, hamming_threshold);
                  
                  py::list py_results;
                  for (const auto& pair : results) {
@@ -185,6 +186,7 @@ list of tuples
              py::arg("query_vector"),
              py::arg("threshold"),
              py::arg("max_candidates") = 2000,
+             py::arg("hamming_threshold") = 0,
              R"doc(
 Find all neighbors within a distance threshold.
 

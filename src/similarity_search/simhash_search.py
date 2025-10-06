@@ -100,7 +100,7 @@ class SimHashSearch:
         self.backend.add_batch(vectors, ids)
     
     def query(self, query_vector: np.ndarray, k: int = 10,
-              max_candidates: int = 1000) -> List[Tuple[int, float]]:
+              max_candidates: int = 1000, hamming_threshold: int = 0) -> List[Tuple[int, float]]:
         """
         Find k nearest neighbors.
         
@@ -112,16 +112,18 @@ class SimHashSearch:
             Number of nearest neighbors to return
         max_candidates : int, default=1000
             Maximum number of candidates to examine
+        hamming_threshold : int, default=0
+            Hamming distance threshold for multi-probing (0 = exact hash match only)
             
         Returns
         -------
         List[Tuple[int, float]]
             List of (id, distance) tuples, sorted by distance
         """
-        return self.backend.query(query_vector, k, max_candidates)
+        return self.backend.query(query_vector, k, max_candidates, hamming_threshold)
     
     def query_radius(self, query_vector: np.ndarray, threshold: float,
-                     max_candidates: int = 2000) -> List[Tuple[int, float]]:
+                     max_candidates: int = 2000, hamming_threshold: int = 0) -> List[Tuple[int, float]]:
         """
         Find all neighbors within a distance threshold.
         
@@ -133,13 +135,15 @@ class SimHashSearch:
             Maximum distance threshold
         max_candidates : int, default=2000
             Maximum number of candidates to examine
+        hamming_threshold : int, default=0
+            Hamming distance threshold for multi-probing (0 = exact hash match only)
             
         Returns
         -------
         List[Tuple[int, float]]
             List of (id, distance) tuples where distance <= threshold
         """
-        return self.backend.query_radius(query_vector, threshold, max_candidates)
+        return self.backend.query_radius(query_vector, threshold, max_candidates, hamming_threshold)
     
     def get_stats(self) -> Dict[str, int]:
         """
