@@ -3,58 +3,68 @@
 # Đề tài: Rút gọn tập ảnh lớn bằng phát hiện ảnh trùng nội dung
 # ============================================================================
 
-# Core Dependencies
+# Core Dependencies (REQUIRED)
 # ----------------------------------------------------------------------------
-numpy>=1.19.0
-torch>=1.10.0
-torchvision>=0.11.0
-Pillow>=8.0.0
+numpy>=1.19.0,<2.0.0          # Numerical computing (compatible with older packages)
+torch>=1.10.0                 # PyTorch deep learning framework
+torchvision>=0.11.0           # PyTorch vision models and transforms
+Pillow>=8.0.0                 # Python Imaging Library
 
-# Deep Learning Models (Feature Extraction)
+# Deep Learning Models (REQUIRED for feature extraction)
 # ----------------------------------------------------------------------------
-timm>=0.6.0                    # PyTorch Image Models (EfficientNet, ConvNeXt, ViT)
+timm>=0.6.0                   # PyTorch Image Models (EfficientNet, ConvNeXt, ViT)
 
-# Similarity Search & LSH
+# Similarity Search & LSH (REQUIRED)
 # ----------------------------------------------------------------------------
 faiss-cpu>=1.7.0              # Facebook AI Similarity Search (CPU version)
-# faiss-gpu>=1.7.0            # Uncomment nếu có GPU
-pybind11>=2.6.0               # C++ bindings cho Python (cho LSH module)
-datasketch>=1.5.0             # MinHash implementation
+# faiss-gpu>=1.7.0            # Uncomment for GPU support (requires CUDA)
+pybind11>=2.6.0               # C++ bindings for Python (required for LSH C++ module)
+setuptools>=50.0.0            # Required for building C++ extensions
+datasketch>=1.5.0             # MinHash LSH implementation (for comparison)
 
-# Image Processing
+# Image Processing (REQUIRED)
 # ----------------------------------------------------------------------------
-opencv-python>=4.5.0          # Computer vision library
-scikit-image>=0.18.0          # Image processing algorithms
+opencv-python>=4.5.0          # Computer vision library (used in image_utils)
+ImageHash>=4.2.0              # Perceptual image hashing algorithms
 
-# Visualization & Analysis
+# Data Manipulation (REQUIRED)
+# ----------------------------------------------------------------------------
+pandas>=1.2.0                 # Data frames and CSV handling
+tabulate>=0.8.0               # Pretty-print tables for results display
+
+# Visualization (REQUIRED for benchmarks and evaluation)
 # ----------------------------------------------------------------------------
 matplotlib>=3.3.0             # Plotting library
 seaborn>=0.11.0               # Statistical visualization
-plotly>=5.0.0                 # Interactive plots
 
-# Evaluation & Metrics
+# Evaluation & Metrics (REQUIRED)
 # ----------------------------------------------------------------------------
-scikit-learn>=0.24.0          # Machine learning metrics
+scikit-learn>=0.24.0          # Machine learning metrics and clustering
 scipy>=1.5.0                  # Scientific computing
 
-# Utilities
+# System Monitoring (REQUIRED)
 # ----------------------------------------------------------------------------
-tqdm>=4.60.0                  # Progress bars
-pandas>=1.2.0                 # Data manipulation
-tabulate>=0.8.0               # Pretty-print tables
-psutil>=5.8.0                 # System and process utilities (memory monitoring)
-ImageHash>=4.2.0              # Perceptual image hashing
+psutil>=5.8.0                 # Memory and CPU usage monitoring
 
-# Dimensionality Reduction & Clustering
+# Dimensionality Reduction (REQUIRED for visualization)
 # ----------------------------------------------------------------------------
-umap-learn>=0.5.0             # UMAP dimensionality reduction
+umap-learn>=0.5.0             # UMAP for embedding visualization
 
-# Testing
+# Optional - Advanced Visualization
 # ----------------------------------------------------------------------------
-pytest>=6.0.0                 # Testing framework
-pytest-cov>=2.12.0            # Coverage plugin
+# plotly>=5.0.0               # Interactive plots (not used in core pipeline)
+# scikit-image>=0.18.0        # Advanced image processing (not used in core)
 
-# Documentation (Optional)
+# Optional - Progress Bars
+# ----------------------------------------------------------------------------
+# tqdm>=4.60.0                # Progress bars (commented out, not critical)
+
+# Optional - Testing
+# ----------------------------------------------------------------------------
+# pytest>=6.0.0               # Testing framework
+# pytest-cov>=2.12.0          # Coverage plugin
+
+# Optional - Jupyter Notebooks
 # ----------------------------------------------------------------------------
 # jupyter>=1.0.0              # Jupyter notebooks
 # notebook>=6.4.0             # Jupyter notebook server

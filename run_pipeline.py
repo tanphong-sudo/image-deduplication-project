@@ -1,12 +1,25 @@
 #!/usr/bin/env python3
 """
-run_pipeline.py
-Skeleton pipeline orchestrator for image deduplication project.
+Image Deduplication Pipeline
 
-Usage examples:
-  python run_pipeline.py --dataset /path/to/images --extractor resnet --method faiss --build-index --use-gpu
-  python run_pipeline.py --dataset /path/to/images --method phash --phash-threshold 8
-  python run_pipeline.py --dataset /path/to/images --extractor vit --method simhash --simhash-bits 64 --hamming-threshold 10
+A complete pipeline for detecting and removing duplicate images using deep learning
+feature extraction and similarity search algorithms.
+
+Usage:
+    Basic (recommended defaults):
+        python run_pipeline.py --dataset data/raw
+        
+    Custom configuration:
+        python run_pipeline.py --dataset data/raw --extractor resnet --method faiss --threshold 30
+        python run_pipeline.py --dataset data/raw --method simhash --hamming-threshold 5
+        
+    For detailed help:
+        python run_pipeline.py --help
+
+Default behavior:
+    - Feature extractor: EfficientNet-B0 (fast, accurate)
+    - Search method: FAISS (exact nearest neighbor)
+    - Clustering threshold: 50 (Euclidean distance)
 """
 import os
 import sys
@@ -208,27 +221,92 @@ def cluster_from_knn(I: np.ndarray, D: np.ndarray, threshold: float) -> List[Lis
 # Main orchestration
 # ---------------------------
 def main():
-    parser = argparse.ArgumentParser(description="Run image deduplication pipeline.")
-    parser.add_argument("--dataset", required=True, help="Path to image folder")
-    parser.add_argument("--out-dir", default="output", help="Output folder to store features/indices/results")
-    parser.add_argument("--extractor", choices=["resnet", "vit", "efficientnet", "convnexttiny"], default="resnet",
-                        help="Which feature extractor to use")
-    parser.add_argument("--method", choices=["exact", "faiss", "simhash", "minhash"], default="faiss",
-                        help="Which duplicate detection / search method to run")
-    parser.add_argument("--build-index", action="store_true", help="Build index (if method is faiss/simhash)")
-    parser.add_argument("--load-features", default=None, help="Path to npy file of features to load (skip extract)")
-    parser.add_argument("--save-features", default=None, help="Path to save features (npy)")
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--use-gpu", action="store_true")
-    parser.add_argument("--k", type=int, default=50, help="k for kNN search")
-    parser.add_argument("--threshold", type=float, default=None, help="distance threshold for clustering (L2 for FAISS)")
-    parser.add_argument("--nlist", type=int, default=1024, help="FAISS nlist (if IVF)")
-    parser.add_argument("--index-type", choices=["flat", "ivf", "hnsw"], default="flat")
-    parser.add_argument("--simhash-bits", type=int, default=64)
-    parser.add_argument("--hamming-threshold", type=int, default=10)
-    parser.add_argument("--pca-dim", type=int, default=None)
-    parser.add_argument("--seed", type=int, default=42)
+    parser = argparse.ArgumentParser(
+        description="Image Deduplication Pipeline - Find and remove duplicate images",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  Basic usage (recommended defaults):
+    python run_pipeline.py --dataset data/raw
+    
+  Using ResNet50 feature extractor:
+    python run_pipeline.py --dataset data/raw --extractor resnet --threshold 30
+    
+  Using SimHash LSH (fast, approximate):
+    python run_pipeline.py --dataset data/raw --method simhash --hamming-threshold 5
+    
+  Load pre-extracted features:
+    python run_pipeline.py --dataset data/raw --load-features features.npy --build-index
+
+Output:
+  - data/processed/image_labels.csv: Image paths with labels
+  - data/processed/ground_truth_pairs.json: True duplicate pairs
+  - data/processed/features.npy: Extracted feature vectors
+  - data/processed/evaluation_full.json: Performance metrics
+  - data/processed/<representatives>: One image per cluster
+
+For more information, visit: https://github.com/tanphong-sudo/image-deduplication-project
+        """
+    )
+    
+    parser.add_argument("--dataset", default="data/raw", 
+                        help="Path to image folder (default: data/raw)")
+    parser.add_argument("--out-dir", default="data/processed", 
+                        help="Output folder (default: data/processed)")
+    
+    parser.add_argument("--extractor", choices=["resnet", "vit", "efficientnet", "convnexttiny"], 
+                        default="efficientnet",
+                        help="Feature extractor: efficientnet (default, fast), resnet (accurate), vit (modern)")
+    
+    parser.add_argument("--method", choices=["exact", "faiss", "simhash", "minhash"], 
+                        default="faiss",
+                        help="Search method: faiss (default, exact), simhash (fast, approximate)")
+    
+    parser.add_argument("--build-index", action="store_true", 
+                        help="Build search index (auto-enabled for faiss/simhash)")
+    parser.add_argument("--load-features", default=None, 
+                        help="Load features from .npy file (skip extraction)")
+    parser.add_argument("--save-features", default=None, 
+                        help="Save extracted features to .npy file")
+    
+    parser.add_argument("--batch-size", type=int, default=16,
+                        help="Batch size for feature extraction (default: 16)")
+    parser.add_argument("--use-gpu", action="store_true",
+                        help="Use GPU for feature extraction (if available)")
+    
+    parser.add_argument("--k", type=int, default=50, 
+                        help="Number of nearest neighbors (default: 50)")
+    parser.add_argument("--threshold", type=float, default=50.0, 
+                        help="Distance threshold for clustering (default: 50)")
+    
+    parser.add_argument("--nlist", type=int, default=1024, 
+                        help="FAISS IVF clusters (default: 1024)")
+    parser.add_argument("--index-type", choices=["flat", "ivf", "hnsw"], default="flat",
+                        help="FAISS index type (default: flat)")
+    
+    parser.add_argument("--simhash-bits", type=int, default=64,
+                        help="SimHash bits (default: 64)")
+    parser.add_argument("--hamming-threshold", type=int, default=5,
+                        help="SimHash Hamming threshold (default: 5, try 5-6 for best recall)")
+    
+    parser.add_argument("--pca-dim", type=int, default=None,
+                        help="PCA dimension reduction (optional)")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="Random seed (default: 42)")
+    
     args = parser.parse_args()
+    
+    print("\n" + "="*70)
+    print("🖼️  IMAGE DEDUPLICATION PIPELINE")
+    print("="*70)
+    print(f"📁 Dataset:            {args.dataset}")
+    print(f"📊 Feature Extractor:  {args.extractor}")
+    print(f"🔍 Search Method:      {args.method}")
+    print(f"📏 Threshold:          {args.threshold}")
+    if args.method == "simhash":
+        print(f"🔢 Hamming Threshold:  {args.hamming_threshold}")
+    print(f"💾 Output Directory:   {args.out_dir}")
+    print("="*70 + "\n")
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -294,15 +372,13 @@ def main():
             logging.error("faiss not available. install faiss-cpu or faiss-gpu")
             sys.exit(1)
         index_path = out_dir / f"faiss_index_{args.index_type}.index"
-        if args.build_index:
+        
+        if args.build_index or not index_path.exists():
             logging.info(f"Building FAISS index type={args.index_type} nlist={args.nlist}")
             index = build_faiss_index(features, index_type=args.index_type, nlist=args.nlist)
         else:
-            if index_path.exists():
-                index = faiss.read_index(str(index_path))
-            else:
-                logging.error("Index not found. Use --build-index")
-                sys.exit(1)
+            logging.info(f"Loading existing FAISS index from {index_path}")
+            index = faiss.read_index(str(index_path))
 
         k = args.k
         logging.info("Running kNN self-search (FAISS)")
