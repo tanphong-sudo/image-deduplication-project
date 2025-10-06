@@ -10,6 +10,15 @@ Usage examples:
 """
 import os
 import sys
+
+# Fix for macOS PyTorch segfault - MUST be set before importing torch
+if sys.platform == "darwin":
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["OMP_NUM_THREADS"] = "1"
+    os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # Fix OpenMP duplicate library error
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "src"))
 
 import re
@@ -139,6 +148,13 @@ def get_extractor_instance(name: str, device: str = "cpu", **kwargs):
 def extract_features_with_extractor(extractor, image_paths: List[str], batch_size: int = 32, out_features=None):
     from math import ceil
     from PIL import Image
+    import torch
+    
+    # Fix for macOS segfault: disable MKL threading
+    if sys.platform == "darwin":
+        os.environ["MKL_NUM_THREADS"] = "1"
+        os.environ["OMP_NUM_THREADS"] = "1"
+        torch.set_num_threads(1)
 
     features_list = []
     for i in range(0, len(image_paths), batch_size):
@@ -312,10 +328,11 @@ def main():
             logging.info("Using SimHashSearch (C++ backend via Pybind11)")
 
             dim = features.shape[1]
-            searcher = SimHashSearch(dim=dim, num_bits=args.simhash_bits, num_tables=4)
+            num_tables = 8
+            searcher = SimHashSearch(dim=dim, num_bits=args.simhash_bits, num_tables=num_tables)
             searcher.add_batch(features, np.arange(len(features)))
 
-            logging.info("Running SimHash search...")
+            logging.info(f"Running SimHash search (tables={num_tables}, hamming_threshold={args.hamming_threshold})...")
             def _simhash_search():
                 N = len(features)
                 k = args.k
@@ -323,7 +340,7 @@ def main():
                 D = np.full((N, k), np.inf, dtype=float)
 
                 for i, vec in enumerate(features):
-                    neighbors = searcher.query(vec, k=k)
+                    neighbors = searcher.query(vec, k=k, max_candidates=2000, hamming_threshold=args.hamming_threshold)
                     for j, (nid, dist) in enumerate(neighbors):
                         I[i, j] = nid
                         D[i, j] = dist
@@ -334,7 +351,10 @@ def main():
             timings["simhash_search"] = elapsed
             memory_usage["simhash_search"] = mem_mb
 
-            clusters_idx = cluster_from_knn(I, D, threshold=args.hamming_threshold)
+            # Use --threshold if provided, otherwise use --hamming-threshold
+            threshold = args.threshold if args.threshold is not None else args.hamming_threshold
+            logging.info(f"Clustering with threshold={threshold}")
+            clusters_idx = cluster_from_knn(I, D, threshold=threshold)
             clusters = [[ids[i] for i in cl] for cl in clusters_idx]
             reps = choose_representatives(clusters_idx, ids)
             with open(out_dir / "simhash_clusters.json", "w") as f:
@@ -373,13 +393,17 @@ def main():
      # copy representatives outward for inspection
     processed_dir = Path("data/processed")
     processed_dir.mkdir(parents=True, exist_ok=True)
-    for rep in reps:
+    # reps is Dict[cluster_id, image_path]
+    for cluster_id, rep_path in reps.items():
         try:
-            rep_path = ids[rep] if isinstance(rep, int) and rep < len(ids) else rep
-            dst = processed_dir / Path(rep_path).name
-            shutil.copy(rep_path, dst)
+            if os.path.exists(rep_path):
+                dst = processed_dir / Path(rep_path).name
+                shutil.copy(rep_path, dst)
+                logging.info(f"Copied representative for cluster {cluster_id}: {Path(rep_path).name}")
+            else:
+                logging.warning(f"Representative file not found: {rep_path}")
         except Exception as e:
-            logging.warning(f"Failed to copy representative {rep}: {e}")
+            logging.warning(f"Failed to copy representative {rep_path}: {e}")
 
     # optionally, compute evaluation if you have ground-truth pairs
     gt_path = Path(args.out_dir) / "ground_truth_pairs.json"
@@ -397,6 +421,17 @@ def main():
 
     logging.info(f"Full evaluation saved to {out_dir}/evaluation_full.json")
     logging.info("Pipeline finished.")
+    
+    # Display results using view_results.py
+    try:
+        import subprocess
+        view_results_path = Path(__file__).parent / "view_results.py"
+        if view_results_path.exists():
+            subprocess.run([sys.executable, str(view_results_path)], check=False)
+        else:
+            logging.warning("view_results.py not found, skipping results display")
+    except Exception as e:
+        logging.warning(f"Could not display results: {e}")
 
 if __name__ == "__main__":
     main()
