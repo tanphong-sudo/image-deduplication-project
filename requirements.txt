@@ -5,7 +5,7 @@
 
 # Core Dependencies (REQUIRED)
 # ----------------------------------------------------------------------------
-numpy>=1.19.0,<2.0.0          # Numerical computing (compatible with older packages)
+numpy>=2.0.0,<3.0.0           # Numerical computing (compatible with latest packages)
 torch>=1.10.0                 # PyTorch deep learning framework
 torchvision>=0.11.0           # PyTorch vision models and transforms
 Pillow>=8.0.0                 # Python Imaging Library
