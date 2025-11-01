@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="420" viewBox="0 0 1200 420" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+    <style type="text/css"><![CDATA[
+      .bg { fill: #f7f9fb; }
+      .card { fill: #ffffff; stroke: none; rx:16; }
+      .accent { fill: #0066cc; }
+      .muted { fill: #6b7280; font-family: Inter, Arial, sans-serif; }
+      .title { font-family: Inter, Arial, sans-serif; font-weight:600; font-size:20px; fill:#0b1220; }
+      .label { font-family: Inter, Arial, sans-serif; font-size:14px; fill:#0b1220; }
+      .small { font-family: Inter, Arial, sans-serif; font-size:12px; fill:#6b7280; }
+      .arrow { stroke: #cfe7ff; stroke-width:4; fill:none; marker-end: url(#arrowhead); }
+    ]]></style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#0b79d0" />
+    </marker>
+  </defs>
+
+  <rect width="1200" height="420" class="bg"/>
+
+  <!-- Header -->
+  <text x="36" y="36" class="title">Pipeline overview — Image Deduplication</text>
+
+  <!-- Feature extractor card -->
+  <g transform="translate(40,90)">
+    <rect width="260" height="120" class="card" filter="url(#shadow)"/>
+    <text x="22" y="40" class="label">Feature extractor</text>
+    <text x="22" y="66" class="small">ResNet / ViT / EfficientNet</text>
+    <g transform="translate(22,86)">
+      <rect width="216" height="22" rx="8" fill="#ecf6ff"/>
+      <text x="12" y="16" class="small" fill="#0b1220">Output:  feature vectors (N × d)</text>
+    </g>
+  </g>
+
+  <!-- FAISS card -->
+  <g transform="translate(340,40)">
+    <rect width="240" height="80" class="card" filter="url(#shadow)"/>
+    <text x="18" y="32" class="label">FAISS</text>
+    <text x="18" y="52" class="small">IndexFlat / IVF / HNSW</text>
+  </g>
+
+  <!-- SimHash card -->
+  <g transform="translate(340,150)">
+    <rect width="240" height="80" class="card" filter="url(#shadow)"/>
+    <text x="18" y="32" class="label">SimHash (C++)</text>
+    <text x="18" y="52" class="small">LSH tables → Hamming neighbors</text>
+  </g>
+
+  <!-- kNN arrows from feature to methods -->
+  <path d="M300,150 L340,100" class="arrow"/>
+  <path d="M300,180 L340,190" class="arrow"/>
+
+  <!-- kNN/search box -->
+  <g transform="translate(620,40)">
+    <rect width="240" height="190" class="card" filter="url(#shadow)"/>
+    <text x="20" y="36" class="label">k-NN / Similarity search</text>
+    <text x="20" y="64" class="small">Query: self-search (k neighbors)</text>
+
+    <g transform="translate(20,88)">
+      <rect width="200" height="28" rx="8" fill="#f0f7ff"/>
+      <text x="12" y="18" class="small">D (distances), I (indices) — shape N × k</text>
+    </g>
+
+    <g transform="translate(20,126)">
+      <rect width="200" height="28" rx="8" fill="#f0f7ff"/>
+      <text x="12" y="18" class="small">Parameters: k, nprobe, threshold</text>
+    </g>
+  </g>
+
+  <!-- arrows from FAISS / SimHash to kNN -->
+  <path d="M580,80 L620,110" class="arrow"/>
+  <path d="M580,190 L620,170" class="arrow"/>
+
+  <!-- Clustering -->
+  <g transform="translate(900,40)">
+    <rect width="260" height="120" class="card" filter="url(#shadow)"/>
+    <text x="20" y="40" class="label">Clustering (single-link)</text>
+    <text x="20" y="64" class="small">cluster_from_knn(I, D, threshold)</text>
+    <text x="20" y="88" class="small">Output: list of clusters &amp; representatives</text>
+  </g>
+
+  <!-- arrow from kNN to clustering -->
+  <path d="M860,140 L900,100" class="arrow"/>
+
+  <!-- Evaluation -->
+  <g transform="translate(40,240)">
+    <rect width="340" height="140" class="card" filter="url(#shadow)"/>
+    <text x="20" y="38" class="label">Evaluation &amp; outputs</text>
+    <text x="20" y="62" class="small">Precision / Recall / TP/FP/FN / timing / memory</text>
+    <text x="20" y="86" class="small">Ground-truth pairs (from filenames)</text>
+    <text x="20" y="110" class="small">Saved: clusters.json, evaluation_full.json, features.npy</text>
+  </g>
+
+  <!-- arrow from clustering to evaluation -->
+  <path d="M980,140 L920,240" class="arrow"/>
+
+  <!-- footer legend -->
+  <g transform="translate(420,320)">
+    <rect x="0" y="0" width="720" height="80" rx="10" fill="#ffffff" filter="url(#shadow)"/>
+    <text x="18" y="24" class="label">Notes</text>
+    <text x="18" y="44" class="small">• k (neighbors) controls recall / runtime — larger k → higher recall, higher compute</text>
+    <text x="18" y="64" class="small">• threshold controls single-link clustering (L2 for FAISS / Hamming for SimHash)</text>
+  </g>
+</svg>
