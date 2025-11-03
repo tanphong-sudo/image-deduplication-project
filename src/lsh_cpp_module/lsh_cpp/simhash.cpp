@@ -179,7 +179,7 @@ public:
      * @param id ID duy nhất của vector (ví dụ: index của ảnh).
      */
     void add(const std::vector<float>& vec, int id) {
-        if (vec.size() != dim) {
+        if (vec.size() != static_cast<size_t>(dim)) {
             throw std::invalid_argument("Vector dimension mismatch!");
         }
         
@@ -221,14 +221,14 @@ public:
                                               int k = 10, 
                                               int max_candidates = 1000,
                                               int hamming_threshold = 0) {
-        if (query_vec.size() != dim) {
+        if (query_vec.size() != static_cast<size_t>(dim)) {
             throw std::invalid_argument("Query vector dimension mismatch!");
         }
         
         // Thu thập candidates từ tất cả các bảng băm
         std::map<int, bool> candidates_set;
         
-        for (int t = 0; t < num_tables && candidates_set.size() < max_candidates; ++t) {
+        for (int t = 0; t < num_tables && candidates_set.size() < static_cast<size_t>(max_candidates); ++t) {
             uint64_t query_hash = hash_vector(query_vec, t);
             
             // Multi-probing: tìm buckets trong vòng Hamming distance threshold
@@ -240,9 +240,9 @@ public:
                 if (ham_dist <= hamming_threshold) {
                     for (int id : bucket_pair.second) {
                         candidates_set[id] = true;
-                        if (candidates_set.size() >= max_candidates) break;
+                        if (candidates_set.size() >= static_cast<size_t>(max_candidates)) break;
                     }
-                    if (candidates_set.size() >= max_candidates) break;
+                    if (candidates_set.size() >= static_cast<size_t>(max_candidates)) break;
                 }
             }
         }
@@ -260,7 +260,7 @@ public:
                   [](const auto& a, const auto& b) { return a.second < b.second; });
         
         // Trả về top k
-        if (results.size() > k) {
+        if (results.size() > static_cast<size_t>(k)) {
             results.resize(k);
         }
         
@@ -279,13 +279,13 @@ public:
                                                      float threshold,
                                                      int max_candidates = 2000,
                                                      int hamming_threshold = 0) {
-        if (query_vec.size() != dim) {
+        if (query_vec.size() != static_cast<size_t>(dim)) {
             throw std::invalid_argument("Query vector dimension mismatch!");
         }
         
         std::map<int, bool> candidates_set;
         
-        for (int t = 0; t < num_tables && candidates_set.size() < max_candidates; ++t) {
+        for (int t = 0; t < num_tables && candidates_set.size() < static_cast<size_t>(max_candidates); ++t) {
             uint64_t query_hash = hash_vector(query_vec, t);
             
             // Multi-probing: tìm buckets trong vòng Hamming distance threshold
@@ -297,9 +297,9 @@ public:
                 if (ham_dist <= hamming_threshold) {
                     for (int id : bucket_pair.second) {
                         candidates_set[id] = true;
-                        if (candidates_set.size() >= max_candidates) break;
+                        if (candidates_set.size() >= static_cast<size_t>(max_candidates)) break;
                     }
-                    if (candidates_set.size() >= max_candidates) break;
+                    if (candidates_set.size() >= static_cast<size_t>(max_candidates)) break;
                 }
             }
         }
