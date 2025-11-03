@@ -453,6 +453,10 @@ For more information, visit: https://github.com/tanphong-sudo/image-deduplicatio
             timings["minhash_search"] = elapsed
             memory_usage["minhash_search"] = mem_mb
 
+            med = np.median(D[D > 0])
+            args.threshold = med * 0.75
+            logging.info(f"Auto threshold based on median distance = {args.threshold:.3f}")
+
             clusters_idx = cluster_from_knn(I, D, threshold=args.threshold if args.threshold is not None else 0.3)
             clusters = [[ids[i] for i in cl] for cl in clusters_idx]
             reps = choose_representatives(clusters_idx, ids)
