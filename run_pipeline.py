@@ -443,10 +443,15 @@ For more information, visit: https://github.com/tanphong-sudo/image-deduplicatio
     elif args.method == "minhash":
         try:
             mm = importlib.import_module("src.similarity_search.minhash_search")
+            index_path = Path(out_dir) / "minhash_index.bin"
+            
+            # Build index if needed
+            if args.build_index or not index_path.exists():
+                logging.info("Building MinHash index...")
+                mm.build_index(features, ids, str(index_path))
+            
             def _minhash_search():
-                if args.build_index:
-                    mm.build_index(features, ids, str(Path(out_dir) / "minhash_index.bin"))
-                return mm.search_index(str(Path(out_dir) / "minhash_index.bin"), features, k=args.k)
+                return mm.search_index(str(index_path), features, k=args.k)
 
             (res, elapsed, mem_mb) = run_with_time_and_peak_rss(_minhash_search)
             D, I = res
