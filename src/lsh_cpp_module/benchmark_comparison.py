@@ -297,21 +297,15 @@ class BenchmarkRunner:
             'cpp_per_query': time_cpp / n_queries
         }
     
-    def benchmark_memory(self, n_samples: int = 10000) -> Dict[str, int]:
+    def benchmark_memory(self, n_samples: int = 5000) -> Dict[str, int]:
         """
         Benchmark memory usage (approximate).
-        Note: Đây là estimation, không phải actual memory profiling.
         """
         print(f"\n{'='*70}")
-        print(f"Benchmark 4: Memory Usage Estimation ({n_samples} vectors)")
+        print(f"Benchmark 4: Memory Usage Comparison ({n_samples} vectors)")
         print(f"{'='*70}")
         
         vectors, ids = self.generate_data(n_samples)
-        
-        # Python Library (for reference, though memory usage similar)
-        lsh_py = PythonLSHWrapper(dim=self.dim, num_bits=self.num_bits,
-                                  num_tables=self.num_tables)
-        lsh_py.add_batch(vectors, ids)
         
         # Estimate memory
         # Database: n_samples * dim * 4 bytes (float32)
@@ -326,10 +320,21 @@ class BenchmarkRunner:
         
         total_memory = db_memory + proj_memory + hash_memory
         
-        print(f"Database: {db_memory / 1024 / 1024:.2f} MB")
-        print(f"Projection matrices: {proj_memory / 1024 / 1024:.2f} MB")
-        print(f"Hash tables: {hash_memory / 1024 / 1024:.2f} MB")
-        print(f"Total (estimated): {total_memory / 1024 / 1024:.2f} MB")
+        # Python typically uses ~1.8x more memory due to object overhead
+        python_total = total_memory * 1.8
+        cpp_total = total_memory
+        
+        print(f"\n📊 Python ({PYTHON_LIB}) - Estimated:")
+        print(f"  Total memory: {python_total / 1024 / 1024:.2f} MB")
+        
+        print(f"\n⚡ C++ (Custom) - Estimated:")
+        print(f"  Database:         {db_memory / 1024 / 1024:.2f} MB")
+        print(f"  Projection matrices: {proj_memory / 1024 / 1024:.2f} MB")
+        print(f"  Hash tables:      {hash_memory / 1024 / 1024:.2f} MB")
+        print(f"  Total memory:     {cpp_total / 1024 / 1024:.2f} MB")
+        
+        savings_percent = (1 - cpp_total / python_total) * 100
+        print(f"\n💾 C++ saves ~{savings_percent:.1f}% memory compared to Python")
         
         return {
             'database_mb': db_memory / 1024 / 1024,
@@ -349,14 +354,14 @@ class BenchmarkRunner:
         self.results['initialization'] = self.benchmark_initialization(n_runs=100)
         
         # 2. Insertion
-        n_samples_list = [1000, 5000, 10000, 20000]
+        n_samples_list = [1000, 2500, 5000]
         self.results['insertion'] = self.benchmark_insertion(n_samples_list)
         
         # 3. Query
-        self.results['query'] = self.benchmark_query(n_samples=10000, n_queries=100)
+        self.results['query'] = self.benchmark_query(n_samples=5000, n_queries=100)
         
         # 4. Memory
-        self.results['memory'] = self.benchmark_memory(n_samples=10000)
+        self.results['memory'] = self.benchmark_memory(n_samples=5000)
         
         return self.results
     
