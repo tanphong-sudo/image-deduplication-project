@@ -1,179 +1,710 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Image Deduplication with Deep Learning & LSH</title>
-  <meta name="description" content="Image Deduplication system using Deep Learning, FAISS, SimHash (C++), and MinHash — implemented as part of HCMUT Data Structures & Algorithms course project."/>
-  <link rel="stylesheet" href="https://unpkg.com/normalize.css/normalize.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purity AI - Duplicate Image Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-light': '#f0f4f8', /* Light Blueish Gray Background */
+                        'card-base': 'rgba(255, 255, 255, 0.95)', /* White Translucent */
+                        'app-frame': '#FFFFFF', /* Main App Body */
+                        'accent': '#3b82f6', /* Blue-500 */
+                        'accent-dark': '#1e3a8a', /* Blue-900 */
+                        'text-dark': '#1f2937', /* Gray-800 */
+                        'brand-green': '#10b981', /* Emerald */
+                        'deep-navy': '#1e3a8a', /* For background simulation */
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            /* SỬ DỤNG HÌNH NỀN MỚI TỪ THƯ MỤC ASSETS CỦA BẠN */
+            /* Đường dẫn tương đối: /static/assets/unnamed.jpg */
+            background-image: url('assets/vivo-pad-dark-blue-5120x5120-23151.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-color: #161c3a; /* Fallback color */
+            color: #1f2937; /* Default text color inside the app frame */
+        }
+        
+        /* The main container simulating a Desktop App Window */
+        #desktopAppFrame {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh; /* Fixed height relative to viewport */
+            min-height: 700px;
+            max-height: 950px;
+            margin: 5vh auto;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
+            position: relative;
+            background-color: #f7f9fc; /* Light background for the content area */
+        }
+        
+        /* Glassmorphism for the Left Sidebar/Content Block */
+        .glass-block {
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
 
-  <style>
-    :root {
-      --accent:#0066cc; --bg:#f7f9fb; --card:#ffffff; --muted:#6b7280;
-      --maxw:1000px;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    }
-    html { scroll-behavior: smooth; }
-    body { background:var(--bg); color:#0b1220; margin:0; line-height:1.6; overflow-x:hidden; }
-    .wrap { max-width:var(--maxw); margin:36px auto; padding:20px; }
-    header { display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:space-between; }
-    .logo {
-  width:64px;
-  height:64px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-    .hcmut-logo { height:64px; }
-    h1 { margin:0; font-size:1.8rem; }
-    p.lead { color:var(--muted); margin-top:8px; max-width:600px; }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; margin-top:24px; }
-    .card { background:var(--card); border-radius:10px; padding:20px; box-shadow:0 6px 18px rgba(11,18,32,0.06);
-            opacity:0; transform:translateY(20px); transition:all 0.6s ease; min-height:200px; }
-    .card.visible { opacity:1; transform:translateY(0); }
-    .card h3 { margin:0 0 12px 0; font-size:1.1rem; }
-    .small { font-size:0.95rem; color:var(--muted); line-height:1.7; }
-    .small li { margin:6px 0; }
-    pre.cmd { 
-      background:#0b1220; color:#f8fafc; padding:14px 16px; border-radius:8px; 
-      overflow-x:auto; font-size:0.8rem; line-height:1.7; 
-      white-space:pre; margin:12px 0 0 0; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
-    }
-    pre.cmd::-webkit-scrollbar { height:6px; }
-    pre.cmd::-webkit-scrollbar-track { background:#1a1f2e; border-radius:3px; }
-    pre.cmd::-webkit-scrollbar-thumb { background:#4a5568; border-radius:3px; }
-    pre.cmd::-webkit-scrollbar-thumb:hover { background:#5a6678; }
-    footer { margin-top:40px; color:var(--muted); font-size:0.9rem; text-align:center; }
-    .nav { display:flex; gap:12px; margin-top:12px; flex-wrap:wrap; }
-    a.btn { display:inline-block; padding:8px 12px; border-radius:8px; background:var(--accent); color:white; text-decoration:none; transition:background 0.3s; }
-    a.btn:hover { background:#004c99; }
-    ul, ol { padding-left:20px; }
-    section { margin-top:40px; }
-    img.hero { width:100%; max-width:800px; display:block; margin:0 auto; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
-  </style>
+        .input-select, .input-text {
+            background-color: #f3f4f6 !important;
+            border-color: #d1d5db !important;
+            color: #1f2937;
+        }
+        
+        .metric-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+        .drop-zone {
+            border: 2px dashed #9ca3af;
+            background-color: #f9fafb;
+        }
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        /* Style cho Loading Overlay */
+        #loadingOverlay {
+            position: absolute; /* Relative to #desktopAppFrame */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95); 
+            z-index: 100;
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3b82f6;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .thumbnail-scroll-area {
+            max-height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
+<body class="font-sans text-text-dark">
 
-<body>
-  <div class="wrap">
-    <header>
-      <div style="display:flex;align-items:center;gap:12px;">
-        <div class="logo"><img src="assets/logo.png" alt="HCMUT Logo" class="hcmut-logo"></div>
-        <div>
-          <h1>Image Deduplication with Deep Learning & LSH</h1>
-          <p class="lead">
-            Course Project — <strong>Data Structures & Algorithms</strong><br>
-            <em>Ho Chi Minh City University of Technology (HCMUT)</em><br>
-            <strong>Team:</strong> Lê Bảo Tấn Phong, Nguyễn Anh Quân, Phạm Văn Hên
-          </p>
+    <!-- The Main App Frame -->
+    <div id="desktopAppFrame">
+        
+        <!-- Loading Overlay (Inside the frame) -->
+        <div id="loadingOverlay">
+            <div class="spinner mb-4"></div>
+            <p class="text-xl font-semibold text-accent">Analyzing Duplicates...</p>
+            <p class="text-sm text-gray-600 mt-2">Processing large files. Please wait.</p>
         </div>
-      </div>
-    </header>
 
-    <nav class="nav">
-      <a class="btn" href="https://github.com/tanphong-sudo/image-deduplication-project">GitHub</a>
-      <a class="btn" href="report/">Report</a>
-    </nav>
+        <!-- App Header (Top bar with Menu/Title) -->
+        <header class="bg-app-frame p-4 border-b border-gray-200 flex justify-between items-center z-10">
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-500 hover:text-accent-dark transition-colors duration-200 p-2 rounded-lg bg-gray-100">
+                    <!-- Menu Icon (3 lines) -->
+                    <svg xmlns="http://www.w3.org/2003/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+                <span class="text-sm font-medium text-gray-700">Home / Deduplicator</span>
+            </div>
+            <h1 class="text-xl font-bold text-accent-dark">Purity AI (Duplicate Finder)</h1>
+            <div class="flex items-center space-x-4">
+                <!-- LOGO TRƯỜNG ĐƯỢC THÊM VÀO ĐÂY -->
+                <img src="assets/logo.png" alt="University Logo" class="h-6 w-auto object-contain mr-2"> 
+                
+                <button class="text-gray-500 hover:text-accent-dark transition-colors duration-200 p-1 rounded-full border border-gray-300">
+                    <svg xmlns="http://www.w3.org/2003/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+                </button>
+                <span class="text-sm text-gray-500">4.9 ★</span>
+            </div>
+        </header>
 
-    <section>
-      <h2>🚀 Overview</h2>
-      <p>
-        This project implements a <strong>large-scale image deduplication system</strong> combining deep learning
-        feature extraction with efficient similarity search algorithms (FAISS, SimHash C++, and MinHash).
-      </p>
-      <img src="assets/pipeline_diagram.svg" alt="Pipeline Diagram" class="hero" style="max-width:100%; width:90%; display:block; margin:20px auto;">
-    </section>
+        <!-- Main Content Area -->
+        <div class="flex h-[calc(100vh-100px)] max-h-[calc(90vh-65px)]">
+            
+            <!-- Left Sidebar (Configuration and Controls) -->
+            <aside class="w-1/3 p-6 border-r border-gray-200 overflow-y-auto">
+                <div class="glass-block p-4 rounded-xl space-y-4">
+                    <h3 class="text-2xl font-bold text-accent-dark">Upload & Config</h3>
+                    <p class="text-sm text-gray-600">Prepare your images and select the optimal parameters for the AI engine.</p>
+                </div>
 
-    <section class="grid">
-      <div class="card">
-        <h3>🧠 Methods</h3>
-        <ul class="small">
-          <li><strong>FAISS</strong><br>Exact & approximate nearest neighbor search</li>
-          <li><strong>SimHash (C++)</strong><br>Locality-Sensitive Hashing with multi-probing</li>
-          <li><strong>MinHash</strong><br>Jaccard similarity estimation</li>
-        </ul>
-      </div>
+                <!-- Run Button (Primary CTA) -->
+                <div class="mt-6">
+                    <button id="simulateRunButton" class="w-full bg-accent text-white p-3 rounded-lg font-bold hover:bg-blue-600 transition-colors duration-200 shadow-md text-base" onclick="runPipelineViaAPI()">
+                        ▶️ Run Duplicate Detection
+                    </button>
+                </div>
+                
+                <!-- Advanced Settings Accordion -->
+                <div class="mt-6 space-y-3">
+                    <button id="advancedSettingsToggle" class="w-full text-left p-3 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg flex justify-between items-center transition-colors duration-200 border" data-toggle="advanced-settings-group">
+                        Advanced Settings <span id="advancedToggleIcon" class="text-accent text-lg">+</span>
+                    </button>
+                    <div id="advanced-settings-group" class="p-4 border border-gray-300 rounded-b-lg mt-0 hidden space-y-4 bg-white">
+                        
+                        <!-- Batch Size / K Neighbors / PCA Dim -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="flex flex-col">
+                                <label for="batchSize" class="font-medium text-xs mb-1 text-gray-600">Batch Size:</label>
+                                <input type="number" id="batchSize" value="16" min="1" step="1" class="p-2 border rounded-lg input-text" oninput="generateCommand()">
+                            </div>
+                            <div class="flex flex-col">
+                                <label for="kNeighbors" class="font-medium text-xs mb-1 text-gray-600">K Neighbors:</label>
+                                <input type="number" id="kNeighbors" value="50" min="1" step="1" class="p-2 border rounded-lg input-text" oninput="generateCommand()">
+                            </div>
+                            <div class="flex flex-col">
+                                <label for="pcaDim" class="font-medium text-xs mb-1 text-gray-600">PCA Dim:</label>
+                                <input type="number" id="pcaDim" value="" placeholder="None" min="1" step="1" class="p-2 border rounded-lg input-text" oninput="generateCommand()">
+                            </div>
+                        </div>
 
-      <div class="card">
-        <h3>⚡ Quick Start</h3>
-        <pre class="cmd"># Default: EfficientNet + FAISS
-python run_pipeline.py
+                        <!-- FAISS Index Settings (Dynamic) -->
+                        <div id="faiss-advanced-group" class="space-y-4 hidden">
+                            <h4 class="font-semibold text-sm border-b pb-1 text-accent">FAISS Configuration</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="flex flex-col">
+                                    <label for="indexType" class="font-medium text-xs mb-1 text-gray-600">Index Type:</label>
+                                    <select id="indexType" class="p-2 border rounded-lg input-select" onchange="generateCommand()">
+                                        <option value="flat">flat (Exact)</option>
+                                        <option value="ivf">ivf (Approximate, requires Nlist)</option>
+                                        <option value="hnsw">hnsw (Approximate, high accuracy)</option>
+                                    </select>
+                                </div>
+                                <div class="flex flex-col">
+                                    <label for="nlist" class="font-medium text-xs mb-1 text-gray-600">IVF Nlist:</label>
+                                    <input type="number" id="nlist" value="1024" min="1" step="1" class="p-2 border rounded-lg input-text" oninput="generateCommand()">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" id="useGPU" class="w-4 h-4 text-accent border-gray-300 rounded" onchange="generateCommand()">
+                            <label for="useGPU" class="font-medium text-sm text-gray-600">Use GPU</label>
+                        </div>
+                    </div>
+                </div>
 
-# Custom configuration
-python run_pipeline.py \
-  --extractor resnet \
-  --method simhash \
-  --hamming-threshold 6</pre>
-      </div>
+                <!-- Algorithm Settings (Simplified for sidebar) -->
+                <div class="mt-6 glass-block p-4 rounded-xl space-y-3">
+                    <h4 class="font-semibold text-base text-accent-dark border-b pb-2">Algorithm Selection</h4>
+                    <div class="flex flex-col">
+                        <label for="sim-extractor" class="font-medium text-sm mb-1 text-gray-600">Feature Extractor:</label>
+                        <select id="sim-extractor" class="p-2 border rounded-lg input-select" onchange="generateCommand()">
+                            <option value="efficientnet">EfficientNet-B0 (Fast)</option>
+                            <option value="resnet">ResNet50 (Accurate)</option>
+                            <option value="convnexttiny">ConvNeXtTiny</option>
+                            <option value="vit">ViT</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="sim-method" class="font-medium text-sm mb-1 text-gray-600">Search Method:</label>
+                        <select id="sim-method" class="p-2 border rounded-lg input-select" onchange="generateCommand()">
+                            <option value="faiss">FAISS (High Accuracy)</option>
+                            <option value="simhash">SimHash LSH (Scalable)</option>
+                            <option value="minhash">MinHash LSH (Baseline)</option>
+                        </select>
+                    </div>
+                     <!-- Thresholds (Simplified display) -->
+                    <div class="space-y-2">
+                        <div id="euclideanThresholdGroup" class="flex flex-col">
+                            <label for="euclideanThreshold" class="font-medium text-sm mb-1 text-gray-600">Euclidean Threshold (FAISS):</label>
+                            <input type="number" id="euclideanThreshold" value="50" min="1" step="0.1" class="p-2 border rounded-lg input-text" oninput="generateCommand()">
+                        </div>
+                        <div id="hammingThresholdGroup" class="flex flex-col hidden">
+                            <label for="hammingThreshold" class="font-medium text-sm mb-1 text-gray-600">Hamming Threshold (SimHash):</label>
+                            <input type="number" id="hammingThreshold" value="5" min="1" max="64" step="1" class="p-2 border rounded-lg input-text" oninput="generateCommand()">
+                        </div>
+                    </div>
+                </div>
+            </aside>
 
-      <div class="card">
-        <h3>🛠️ Setup</h3>
-        <pre class="cmd"># Install dependencies
-pip install -r requirements.txt
+            <!-- Right Content Area (Upload Queue and Results) -->
+            <main class="w-2/3 p-6 overflow-y-auto">
+                <h2 class="text-3xl font-extrabold mb-6 text-accent-dark">Processing Queue & Results</h2>
+                
+                <!-- Drop Zone and Thumbnails -->
+                <div id="dropZoneContainer" class="bg-white p-4 rounded-xl shadow-lg mb-8 border border-gray-300">
+                    
+                    <div id="dropZone" class="drop-zone flex flex-col items-center justify-center p-4 rounded-xl cursor-pointer h-32" onclick="document.getElementById('fileInput').click()">
+                        <span class="text-3xl mb-1 text-accent">Upload Area</span>
+                        <p id="fileStatus" class="text-base font-medium text-text-dark text-center">Drag & Drop Images Here</p>
+                        <input type="file" id="fileInput" multiple accept="image/*" class="hidden" onchange="handleFileSelect(this.files)">
+                    </div>
+                    
+                    <div id="thumbnailArea" class="thumbnail-scroll-area hidden">
+                        <p class="text-sm font-medium text-gray-600 mb-2">Image Queue:</p>
+                        <div id="thumbnailList" class="flex flex-wrap gap-2">
+                            <!-- Thumbnails will be inserted here -->
+                        </div>
+                    </div>
+                </div>
 
-# Build C++ module (optional)
-cd src/lsh_cpp_module
-python setup.py build_ext --inplace</pre>
-      </div>
+                <!-- RESULTS SECTION -->
+                <div id="resultsSection" class="mt-4 space-y-8 hidden">
+                    <h3 class="text-2xl font-semibold text-gray-700">Performance Metrics</h3>
+                    <div id="resultMetrics" class="grid md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+                        <!-- Metrics will be inserted here -->
+                    </div>
 
-      <div class="card">
-        <h3>📂 Structure</h3>
-        <pre class="cmd">image-deduplication-project/
-├── data/
-│   ├── raw/          # Input
-│   └── processed/    # Output
-├── src/
-│   ├── feature_extraction/
-│   ├── similarity_search/
-│   └── lsh_cpp_module/
-├── run_pipeline.py
-└── view_results.py</pre>
-      </div>
-    </section>
+                    <!-- Image Cluster Viewer (MANDATORY REQUIREMENT) -->
+                    <h3 class="text-2xl font-semibold text-gray-700 pt-8 border-t mt-8">Deduplication Clusters</h3>
+                    <div id="clusterContainers" class="mt-4 space-y-8">
+                        <!-- Clusters will be inserted here -->
+                    </div>
+                </div>
 
-    <section style="background:var(--card);padding:24px;border-radius:12px;box-shadow:0 4px 12px rgba(11,18,32,0.05);">
-      <h2>🎯 Key Findings</h2>
-      <div class="grid" style="margin-top:16px;">
-        <div>
-          <strong style="color:var(--accent);">⚡ Performance</strong>
-          <p class="small" style="margin:8px 0;">FAISS offers best accuracy-speed tradeoff for most use cases</p>
+                <!-- Hidden Console Log and CLI -->
+                <div class="hidden">
+                     <div id="outputConsole"></div>
+                     <code id="cliCommandText"></code>
+                </div>
+            </main>
+
         </div>
-        <div>
-          <strong style="color:var(--accent);">📈 Scalability</strong>
-          <p class="small" style="margin:8px 0;">C++ SimHash scales to billions of images with multi-probing</p>
-        </div>
-        <div>
-          <strong style="color:var(--accent);">🎯 Accuracy</strong>
-          <p class="small" style="margin:8px 0;">Multi-probing improves recall by 30-40% with minimal overhead</p>
-        </div>
-      </div>
-    </section>
 
-    <section>
-      <h2>📖 Citation</h2>
-      <pre class="cmd">@misc{image-deduplication-2025,
-  title={Large-Scale Image Deduplication using 
-         Deep Learning and Locality-Sensitive Hashing},
-  author={Lê Bảo Tấn Phong and Nguyễn Anh Quân and Phạm Văn Hên},
-  institution={HCMUT},
-  year={2025},
-  note={Course Project: Data Structures & Algorithms}
-}</pre>
-    </section>
+    </div>
 
-    <footer>
-      © 2025 HCMUT — Data Structures & Algorithms Course Project
-    </footer>
-  </div>
+    <script>
+        
+        // --- API Configuration ---
+        const API_BASE_URL = "http://127.0.0.1:8000"; 
+        let uploadedFiles = []; 
 
-  <script>
-    // Hiệu ứng xuất hiện khi cuộn
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) e.target.classList.add('visible');
-      });
-    }, { threshold: 0.15 });
+        // --- Console Utility (Hidden) ---
+        const consoleOutput = document.getElementById('outputConsole');
+        
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            console.log(`[${time}][${type.toUpperCase()}] ${message}`); 
+        }
 
-    document.querySelectorAll('.card').forEach(el => observer.observe(el));
-  </script>
+        // --- File Handling Logic ---
+        function displayThumbnails() {
+            const thumbnailList = document.getElementById('thumbnailList');
+            const thumbnailArea = document.getElementById('thumbnailArea');
+            thumbnailList.innerHTML = '';
+
+            if (uploadedFiles.length === 0) {
+                thumbnailArea.classList.add('hidden');
+                return;
+            }
+            
+            thumbnailArea.classList.remove('hidden');
+            document.querySelector('#thumbnailArea p').textContent = `Image Queue (${uploadedFiles.length} files):`;
+
+
+            uploadedFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = file.name;
+                    img.className = 'w-16 h-16 object-cover rounded-md border border-gray-300 shadow-sm transition-shadow duration-200 hover:shadow-lg';
+                    img.title = file.name;
+                    thumbnailList.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function handleFileSelect(files) {
+            uploadedFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+            const statusText = document.getElementById('fileStatus');
+            const runButton = document.getElementById('simulateRunButton');
+
+            if (uploadedFiles.length === 0) {
+                statusText.textContent = "Drag & Drop Images Here";
+                statusText.classList.remove('text-brand-green');
+                runButton.disabled = true;
+                log("[INFO] No images selected.", 'info');
+            } else {
+                statusText.textContent = `✅ ${uploadedFiles.length} images selected. Ready to run.`;
+                statusText.classList.add('text-brand-green');
+                runButton.disabled = false;
+                log(`[INFO] Upload queue prepared with ${uploadedFiles.length} images.`, 'info');
+                displayThumbnails();
+            }
+        }
+        
+        // --- Drag and Drop Events ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZoneContainer = document.getElementById('dropZoneContainer'); 
+            const fileInput = document.getElementById('fileInput');
+
+            dropZoneContainer.onclick = (e) => {
+                if (e.target.tagName !== 'IMG' && e.target.tagName !== 'SPAN' && e.target.id !== 'thumbnailList' && e.target.parentNode.id !== 'thumbnailList') {
+                    fileInput.click();
+                }
+            };
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZoneContainer.addEventListener(eventName, preventDefaults, false);
+            });
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZoneContainer.addEventListener(eventName, () => dropZoneContainer.classList.add('drag-over'), false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZoneContainer.addEventListener(eventName, () => dropZoneContainer.classList.remove('drag-over'), false);
+            });
+
+            dropZoneContainer.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFileSelect(files);
+            }, false);
+
+            // Configure other controls
+            const controls = document.querySelectorAll('input, select');
+            controls.forEach(control => {
+                control.addEventListener('input', generateCommand);
+                control.addEventListener('change', generateCommand);
+            });
+            generateCommand();
+            
+            // Initializing main layout components
+            const appFrame = document.getElementById('desktopAppFrame');
+            // Recalculate max height on resize (crucial for fixed height layouts)
+            window.addEventListener('resize', () => {
+                appFrame.style.height = `${window.innerHeight * 0.9}px`;
+                appFrame.style.maxHeight = `${window.innerHeight * 0.95}px`;
+            });
+        });
+
+
+        // --- Advanced Settings Toggle ---
+        function toggleAdvancedSettings() {
+            const group = document.getElementById('advanced-settings-group');
+            const icon = document.getElementById('advancedToggleIcon');
+            const isHidden = group.classList.toggle('hidden');
+            icon.textContent = isHidden ? '+' : '–';
+        }
+
+        // --- CLI Command Generator (Dummy function for logic) ---
+        function generateCommand() {
+            // FIX: Thêm kiểm tra null cho tất cả các elements trước khi đọc value
+            const getVal = (id) => {
+                const el = document.getElementById(id);
+                return el ? el.value : null;
+            };
+
+            const extractor = getVal('sim-extractor');
+            const method = getVal('sim-method');
+            const euclideanThreshold = getVal('euclideanThreshold');
+            const hammingThreshold = getVal('hammingThreshold');
+            
+            const euclideanGroup = document.getElementById('euclideanThresholdGroup');
+            const hammingGroup = document.getElementById('hammingThresholdGroup');
+            const faissAdvanced = document.getElementById('faiss-advanced-group');
+            const simhashAdvanced = document.getElementById('simhash-advanced-group');
+            
+            // FIX: Thêm kiểm tra null trước khi truy cập classList
+            if (hammingGroup) hammingGroup.classList.toggle('hidden', method !== 'simhash');
+            if (euclideanGroup) euclideanGroup.classList.toggle('hidden', method === 'simhash' || method === 'minhash');
+            if (faissAdvanced) faissAdvanced.classList.toggle('hidden', method !== 'faiss');
+            if (simhashAdvanced) simhashAdvanced.classList.toggle('hidden', method !== 'simhash');
+            
+            // This function primarily updates visibility. Mock CLI generation logic is simplified here.
+        }
+
+        
+        // --- ACTUAL API EXECUTION LOGIC ---
+        async function runPipelineViaAPI() {
+            if (uploadedFiles.length === 0) {
+                log("[FATAL] Please select images before running the pipeline.", 'error');
+                return;
+            }
+
+            const runButton = document.getElementById('simulateRunButton');
+            runButton.disabled = true;
+            runButton.textContent = '⏳ Analyzing... Please Wait.';
+            document.getElementById('loadingOverlay').style.display = 'flex';
+            
+            // Clear previous results/logs
+            document.getElementById('resultMetrics').classList.add('hidden');
+            document.getElementById('clusterContainers').innerHTML = ''; 
+            document.getElementById('resultsSection').classList.add('hidden'); 
+            
+            // FIX: Lấy giá trị từ hàm an toàn
+            const getVal = (id, type) => {
+                const el = document.getElementById(id);
+                if (!el) return null;
+                const value = el.value;
+                if (type === 'int') return parseInt(value) || null;
+                if (type === 'float') return parseFloat(value) || null;
+                return value;
+            };
+            const getChecked = (id) => {
+                 const el = document.getElementById(id);
+                 return el ? el.checked : false;
+            };
+
+            // Build parameters object for API
+            const params = {
+                extractor: getVal('sim-extractor', 'str'),
+                method: getVal('sim-method', 'str'),
+                euclidean_threshold: getVal('euclideanThreshold', 'float'),
+                hamming_threshold: getVal('hammingThreshold', 'int'),
+                batch_size: getVal('batchSize', 'int'),
+                k_neighbors: getVal('kNeighbors', 'int'),
+                pca_dim: getVal('pcaDim', 'int'),
+                use_gpu: getChecked('useGPU'),
+                index_type: getVal('indexType', 'str'),
+                nlist: getVal('nlist', 'int'),
+                simhash_bits: getVal('simhashBits', 'int')
+            };
+            
+            log(`[SYSTEM] Starting upload of ${uploadedFiles.length} images and submitting API request.`, 'system');
+
+            // --- Send FormData (Files + JSON Config) ---
+            const formData = new FormData();
+            formData.append("config", JSON.stringify(params));
+            uploadedFiles.forEach((file) => {
+                formData.append("files", file);
+            });
+            
+            log(`[INFO] Configuration parameters: ${JSON.stringify(params)}`, 'info');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/run_pipeline_upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+
+                if (!response.ok || result.status !== 'SUCCESS') {
+                    log(`[ERROR] Server Error: ${response.status} - ${result.detail || 'Unknown Error'}`, 'error');
+                    throw new Error("API call failed.");
+                }
+
+                // API SUCCESS
+                log(`[SUCCESS] Analysis completed. Rendering results...`, 'success');
+                
+                const metrics = result.metrics;
+                const clusterSummary = result.cluster_summary;
+
+                // Update UI
+                displayMetricsFromAPI(metrics);
+                displayAllClustersFromAPI(clusterSummary, params.method, params.extractor);
+                document.getElementById('resultsSection').classList.remove('hidden'); // SHOW RESULTS
+
+            } catch (error) {
+                log(`[FATAL] API call failed: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                
+                runButton.disabled = false;
+                runButton.textContent = '✅ Analysis Completed';
+                setTimeout(() => {
+                    runButton.textContent = '▶️ Run Duplicate Detection';
+                }, 2000);
+                
+                // Reset file status after run
+                uploadedFiles = []; 
+                document.getElementById('fileStatus').textContent = "Drag & Drop Images Here";
+                document.getElementById('fileStatus').classList.remove('text-green-500');
+                document.getElementById('thumbnailArea').classList.add('hidden'); // Hide thumbnails
+            }
+        }
+
+        // --- Result Display Functions ---
+        
+        function displayMetricsFromAPI(metrics) {
+            const resultMetrics = document.getElementById('resultMetrics');
+            
+            const searchTime = metrics.timings ? metrics.timings.faiss_search || metrics.timings.simhash_search || metrics.timings.minhash_search : 'N/A';
+            const peakMem = metrics.memory_usage ? metrics.memory_usage.search || metrics.memory_usage.feature_extraction : 'N/A';
+            
+            const featureTime = metrics.timings ? metrics.timings.feature_extraction : 0;
+            const totalTimeValue = (typeof featureTime === 'number' && typeof searchTime === 'number') 
+                                   ? (featureTime + searchTime) 
+                                   : 'N/A';
+            const totalTime = typeof totalTimeValue === 'number' ? totalTimeValue.toFixed(2) + 's' : totalTimeValue;
+            
+            const featureDim = metrics.feature_dim || 'N/A';
+
+            // Metrics redesign for Light Theme
+            resultMetrics.innerHTML = `
+                <div class="metric-card p-4 rounded-xl shadow-lg border-b-4 border-green-500 text-center">
+                    <p class="text-xs text-gray-500 font-medium">TOTAL TIME</p>
+                    <p class="text-3xl font-bold text-brand-green">${totalTime}</p>
+                    <p class="text-sm text-gray-500">FE + Search</p>
+                </div>
+                <div class="metric-card p-4 rounded-xl shadow-lg border-b-4 border-yellow-500 text-center">
+                    <p class="text-xs text-gray-500 font-medium">SEARCH TIME</p>
+                    <p class="text-3xl font-bold text-yellow-600">${typeof searchTime === 'number' ? searchTime.toFixed(2) + 's' : searchTime}</p>
+                    <p class="text-sm text-gray-500">Search Only</p>
+                </div>
+                <div class="metric-card p-4 rounded-xl shadow-lg border-b-4 border-accent text-center">
+                    <p class="text-xs text-gray-500 font-medium">PEAK MEMORY</p>
+                    <p class="text-3xl font-bold text-accent">${typeof peakMem === 'number' ? peakMem.toFixed(2) + ' MB' : peakMem}</p>
+                    <p class="text-sm text-gray-500">Max RAM Usage</p>
+                </div>
+                <div class="metric-card p-4 rounded-xl shadow-lg border-b-4 border-gray-400 text-center">
+                    <p class="text-xs text-gray-500 font-medium">FEATURE DIM</p>
+                    <p class="text-3xl font-bold text-gray-700">${featureDim}</p>
+                    <p class="text-sm text-gray-500">Vector Size</p>
+                </div>
+            `;
+            resultMetrics.classList.remove('hidden');
+        }
+
+        // --- Display ALL Clusters ---
+        function displayAllClustersFromAPI(clusterSummary, method, extractor) {
+            const container = document.getElementById('clusterContainers');
+            container.innerHTML = ''; 
+            const clusterList = clusterSummary.clusters;
+            
+            if (clusterList.length === 0) {
+                container.innerHTML = `<p class="text-lg text-gray-700 p-4 bg-white rounded-lg shadow">No duplicate clusters found for **${method}** using the **${extractor}** extractor. Try adjusting the threshold.</p>`;
+                return;
+            }
+
+            // Title
+            container.insertAdjacentHTML('beforebegin', `
+                <h3 class="text-2xl font-semibold pt-8 text-text-dark">Deduplication Clusters (${clusterList.length} total found)</h3>
+            `);
+            
+            clusterList.forEach((cluster, index) => {
+                // Create markup for one cluster
+                const clusterHtml = createClusterMarkup(cluster, method, extractor, index + 1);
+                container.insertAdjacentHTML('beforeend', clusterHtml);
+            });
+        }
+        
+        // Helper function to create HTML markup for a single cluster
+        function createClusterMarkup(cluster, method, extractor, index) {
+            const duplicateListHtml = cluster.duplicates.map(path => {
+                const filename = path.split('/').pop().split('?')[0]; 
+                return `
+                    <div class="flex-shrink-0 w-36 h-36 relative group">
+                        <img src="${path || 'https://placehold.co/150x150/ef4444/ffffff?text=ERROR'}" 
+                             onerror="this.onerror=null; this.src='https://placehold.co/150x150/ef4444/ffffff?text=FILE+ERROR';"
+                             alt="Duplicate ${filename}" 
+                             class="w-full h-full object-cover rounded-lg shadow-sm cursor-pointer hover:shadow-xl transition-shadow duration-200 border border-gray-300"
+                             title="File: ${filename}"
+                             onclick="log('[INFO] Selected duplicate image: ${filename}', 'info');">
+                        <span class="absolute bottom-0 left-0 bg-accent-dark text-white text-xs px-2 py-0.5 rounded-tr-lg opacity-80">${filename.substring(0, 10)}...</span>
+                    </div>
+                `;
+            }).join('');
+            
+            const totalDuplicates = cluster.duplicates.length;
+            const totalFiles = totalDuplicates + 1;
+
+            return `
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-brand-green metric-card" id="cluster-${index}">
+                    <p class="text-lg font-bold mb-4 text-brand-green">
+                        Cluster #${index}: ${cluster.id} 
+                        <span class="text-sm font-normal text-gray-500 ml-2">(${totalFiles} files)</span>
+                    </p>
+                    <div class="grid md:grid-cols-4 gap-4">
+                        <!-- Column 1: Representative Image -->
+                        <div class="md:col-span-1">
+                            <p class="text-sm font-medium mb-2 text-center text-gray-600">Representative</p>
+                            <img id="representativeImage-${index}" 
+                                 src="${cluster.representative || 'https://placehold.co/400x400/94a3b8/ffffff?text=REP_NOT_FOUND'}" 
+                                 onerror="this.onerror=null; this.src='https://placehold.co/400x400/ef4444/ffffff?text=FILE+ERROR';"
+                                 alt="Representative Image" 
+                                 class="w-full h-auto rounded-lg shadow-md object-cover border-2 border-accent">
+                        </div>
+                        
+                        <!-- Columns 2-4: Duplicate List (Horizontal Scroll) -->
+                        <div class="md:col-span-3">
+                            <p class="text-sm font-medium mb-2 text-gray-600">Duplicate Images (${totalDuplicates} files)</p>
+                            <div class="flex space-x-4 overflow-x-scroll custom-scroll p-2 border border-gray-300 rounded-lg h-48">
+                                ${duplicateListHtml || '<p class="text-gray-500 self-center p-4">Only representative image found (no duplicates).</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        // --- SPA Logic ---
+        function setupSPA() {
+            
+            // Attach event for Advanced Settings toggle
+            const allAccordionButtons = document.querySelectorAll('[data-toggle]');
+            allAccordionButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault(); 
+                    const targetId = button.dataset.toggle;
+                    const targetElement = document.getElementById(targetId);
+                    const icon = button.querySelector('span');
+
+                    if (targetElement.classList.contains('hidden')) {
+                        targetElement.classList.remove('hidden');
+                        icon.textContent = '–'; 
+                    } else {
+                        targetElement.classList.add('hidden');
+                        icon.textContent = '+'; 
+                    }
+                });
+            });
+            
+            // Activate command generation on input change
+            document.querySelectorAll('input, select').forEach(control => {
+                control.addEventListener('input', generateCommand);
+                control.addEventListener('change', generateCommand);
+            });
+            
+            // Attach event for Run Pipeline button
+            const runButton = document.getElementById('simulateRunButton');
+            runButton.textContent = '▶️ Run Duplicate Detection';
+            runButton.onclick = runPipelineViaAPI;
+            runButton.disabled = true; // Disable until files are selected
+
+            // Initial resize event call
+            const appFrame = document.getElementById('desktopAppFrame');
+            appFrame.style.height = `${window.innerHeight * 0.9}px`;
+            appFrame.style.maxHeight = `${window.innerHeight * 0.95}px`;
+
+            // Ensure console is initialized
+            log(`[SYSTEM] Interface initialized. Please start your Python API Server at ${API_BASE_URL}.`, 'system');
+            generateCommand();
+        }
+
+        window.onload = setupSPA;
+    </script>
 </body>
 </html>

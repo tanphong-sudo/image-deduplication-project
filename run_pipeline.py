@@ -297,15 +297,15 @@ For more information, visit: https://github.com/tanphong-sudo/image-deduplicatio
     args = parser.parse_args()
     
     print("\n" + "="*70)
-    print("🖼️  IMAGE DEDUPLICATION PIPELINE")
+    print("  IMAGE DEDUPLICATION PIPELINE")
     print("="*70)
-    print(f"📁 Dataset:            {args.dataset}")
-    print(f"📊 Feature Extractor:  {args.extractor}")
-    print(f"🔍 Search Method:      {args.method}")
-    print(f"📏 Threshold:          {args.threshold}")
+    print(f" Dataset:            {args.dataset}")
+    print(f" Feature Extractor:  {args.extractor}")
+    print(f" Search Method:      {args.method}")
+    print(f" Threshold:          {args.threshold}")
     if args.method == "simhash":
-        print(f"🔢 Hamming Threshold:  {args.hamming_threshold}")
-    print(f"💾 Output Directory:   {args.out_dir}")
+        print(f" Hamming Threshold:  {args.hamming_threshold}")
+    print(f" Output Directory:   {args.out_dir}")
     print("="*70 + "\n")
 
     out_dir = Path(args.out_dir)
