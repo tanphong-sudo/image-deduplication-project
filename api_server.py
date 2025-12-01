@@ -124,7 +124,8 @@ async def run_pipeline_upload_endpoint(
         if params.method != 'faiss':
             command.extend(["--method", params.method])
         if params.method == 'simhash':
-            command.extend(["--hamming-threshold", str(params.hamming_threshold)])
+            if params.simhash_bits is not None and params.simhash_bits != 64:
+                command.extend(["--simhash-bits", str(params.simhash_bits)])
         elif params.method == 'faiss' and params.euclidean_threshold != 50.0:
             command.extend(["--threshold", str(params.euclidean_threshold)])
         if params.batch_size != 16:
